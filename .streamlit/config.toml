@@ -1,0 +1,18 @@
+[theme]
+base = "dark"
+
+primaryColor = "#8F73B8"
+
+backgroundColor = "#17131F"
+
+secondaryBackgroundColor = "#29233F"
+
+textColor = "#F8F5FF"
+
+borderColor = "#6E5A87"
+
+showWidgetBorder = true
+
+baseRadius = "large"
+
+buttonRadius = "large"
