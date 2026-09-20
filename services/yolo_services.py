@@ -63,50 +63,77 @@ model = YOLO("models/best.pt")
 
 
 def detectar_imagem(imagem: Image.Image):
-  """Recebe uma imagem do PIL, executa o YOLO e retorna
+    """
+    Executa o YOLO e retorna:
+    - detecções
+    - imagem anotada com boxes/máscaras
+    """
 
-  as classes, confianças e porcentagens de área.
-  """
-  # Converte a imagem do PIL para o formato aceito pelo OpenCV/Ultralytics
-  img_np = np.array(imagem)
+    img_np = np.array(imagem)
 
-  # Executa a inferência
-  results = model(img_np, conf=0.25)
-  result = results[0]
+    results = model(img_np, conf=0.25)
+    result = results[0]
 
-  # Se o modelo não detectar máscaras/caixas
-  if result.boxes is None or len(result.boxes) == 0:
-    return []
+    # Imagem com boxes/máscaras desenhados pelo YOLO
+    imagem_anotada = result.plot()
 
-  classes_ids = result.boxes.cls.cpu().numpy()
-  confiancas = result.boxes.conf.cpu().numpy()
-  nomes_classes = result.names
+    # YOLO/OpenCV usa BGR; Streamlit espera RGB
+    imagem_anotada = imagem_anotada[:, :, ::-1]
 
-  resultado_final = []
+    if result.boxes is None or len(result.boxes) == 0:
+        return {
+            "deteccoes": [],
+            "imagem_anotada": imagem_anotada,
+        }
 
-  # Se houver máscaras de segmentação, podemos calcular a proporção por pixels
-  if result.masks is not None:
-    mascaras = result.masks.data.cpu().numpy()
-    areas = [np.sum(mask > 0) for mask in mascaras]
-    area_total = sum(areas) if sum(areas) > 0 else 1
+    classes_ids = result.boxes.cls.cpu().numpy()
+    confiancas = result.boxes.conf.cpu().numpy()
+    nomes_classes = result.names
 
-    for cls_id, conf, area in zip(classes_ids, confiancas, areas):
-      nome_alimento = nomes_classes[int(cls_id)]
-      porcentagem = round((area / area_total) * 100, 1)
-      resultado_final.append({
-          "class": nome_alimento,
-          "confidence": float(conf),
-          "porcentagem": porcentagem,
-      })
-  else:
-    # Fallback caso o modelo retorne apenas caixas (bounding boxes)
-    for cls_id, conf in zip(classes_ids, confiancas):
-      nome_alimento = nomes_classes[int(cls_id)]
-      resultado_final.append(
-          {"class": nome_alimento, "confidence": float(conf), "porcentagem": 0.0}
-      )
+    resultado_final = []
 
-  return resultado_final
+    # Se houver segmentação
+    if result.masks is not None:
+        mascaras = result.masks.data.cpu().numpy()
+
+        areas = [
+            np.sum(mask > 0)
+            for mask in mascaras
+        ]
+
+    # Se houver apenas bounding boxes
+    else:
+        caixas = result.boxes.xyxy.cpu().numpy()
+
+        areas = [
+            max(0, x2 - x1) * max(0, y2 - y1)
+            for x1, y1, x2, y2 in caixas
+        ]
+
+    area_total = sum(areas) or 1
+
+    for cls_id, conf, area in zip(
+        classes_ids,
+        confiancas,
+        areas,
+    ):
+        nome = nomes_classes[int(cls_id)]
+
+        porcentagem = round(
+            (area / area_total) * 100,
+            1,
+        )
+
+        resultado_final.append({
+            "class": nome,
+            "confidence": float(conf),
+            "porcentagem": porcentagem,
+        })
+
+    return {
+        "deteccoes": resultado_final,
+        "imagem_anotada": imagem_anotada,
+    }
 
 def calcular_calorias(deteccoes, peso_total: float = 500.0):
     if not deteccoes:
@@ -123,10 +150,12 @@ def calcular_calorias(deteccoes, peso_total: float = 500.0):
     kcal_por_categoria = {}
 
     for det in deteccoes:
-        nome = det["class"]
-        porcentagem_area = det["porcentagem"]  # já é % (0-100)
+       nome = det["class"]
+nome_chave = nome.strip().lower()
 
-        info = INFO_ALIMENTOS.get(nome)
+porcentagem_area = det["porcentagem"]
+
+info = INFO_ALIMENTOS.get(nome_chave)
         if info is None:
             # Alimento não catalogado: ignora no cálculo calórico,
             # mas ainda soma na área "desconhecida" se quiser tratar depois

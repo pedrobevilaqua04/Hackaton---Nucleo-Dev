@@ -7,9 +7,14 @@ from PIL import Image
 # =========================================================
 
 try:
-    from services.yolo_service import detectar_imagem
+    from services.yolo_services import (
+        detectar_imagem,
+        calcular_calorias,
+    )
+
     YOLO_DISPONIVEL = True
-except ImportError:
+
+except Exception:
     YOLO_DISPONIVEL = False
 
 
@@ -32,7 +37,8 @@ if "mascote" not in st.session_state:
 # ESTILO
 # =========================================================
 
-st.markdown("""
+st.markdown(
+    """
 <style>
 
 /* ---------- Página ---------- */
@@ -65,6 +71,7 @@ footer {
     text-align: center;
     margin-bottom: 4rem;
 }
+
 .hero-title {
     font-size: 3rem;
     font-weight: 800;
@@ -109,7 +116,9 @@ footer {
 /* ---------- Upload / botões ---------- */
 
 [data-testid="stFileUploaderDropzone"] {
-    transition: transform .15s ease, border-color .15s ease;
+    transition:
+        transform .15s ease,
+        border-color .15s ease;
 }
 
 [data-testid="stFileUploaderDropzone"]:hover {
@@ -118,7 +127,9 @@ footer {
 }
 
 .stButton > button {
-    transition: transform .15s ease, filter .15s ease;
+    transition:
+        transform .15s ease,
+        filter .15s ease;
 }
 
 .stButton > button:hover {
@@ -138,6 +149,7 @@ footer {
     margin: .5rem 0;
 
     background: #272032;
+
     border: 1px solid #665179;
     border-radius: 12px;
 
@@ -177,6 +189,7 @@ footer {
 
 .monster {
     position: absolute;
+
     left: 50%;
     bottom: 0;
 
@@ -185,7 +198,12 @@ footer {
 
     transform: translateX(-50%);
 
-    background: linear-gradient(145deg, #b99cdd, #8063aa);
+    background:
+        linear-gradient(
+            145deg,
+            #b99cdd,
+            #8063aa
+        );
 
     border: 3px solid #d8c5ef;
     border-radius: 45% 45% 38% 38%;
@@ -194,14 +212,16 @@ footer {
         0 7px 0 #513b70,
         0 12px 18px rgba(0,0,0,.25);
 
-    animation: monsterFloat 3s ease-in-out infinite;
+    animation:
+        monsterFloat 3s ease-in-out infinite;
 }
 
 
-/* Chifres */
+/* ---------- Chifres ---------- */
 
 .horn {
     position: absolute;
+
     top: -13px;
 
     width: 16px;
@@ -211,6 +231,7 @@ footer {
 
     border: 3px solid #d8c5ef;
     border-bottom: 0;
+
     border-radius: 50% 50% 0 0;
 }
 
@@ -225,16 +246,18 @@ footer {
 }
 
 
-/* Olhos */
+/* ---------- Olhos ---------- */
 
 .eye {
     position: absolute;
+
     top: 22px;
 
     width: 10px;
     height: 12px;
 
     background: #20172d;
+
     border-radius: 50%;
 }
 
@@ -247,10 +270,11 @@ footer {
 }
 
 
-/* Boca */
+/* ---------- Boca ---------- */
 
 .mouth {
     position: absolute;
+
     left: 50%;
     bottom: 14px;
 
@@ -260,14 +284,16 @@ footer {
     transform: translateX(-50%);
 
     background: #3a2749;
+
     border-radius: 10px;
 }
 
 
-/* Braços */
+/* ---------- Braços ---------- */
 
 .arm {
     position: absolute;
+
     bottom: -10px;
 
     width: 25px;
@@ -290,11 +316,12 @@ footer {
 }
 
 
-/* Feliz */
+/* ---------- Feliz ---------- */
 
 .mascot-happy .mouth {
     width: 22px;
     height: 11px;
+
     bottom: 10px;
 
     background: transparent;
@@ -304,15 +331,17 @@ footer {
 }
 
 .mascot-happy .monster {
-    animation: monsterHappy .55s ease-in-out infinite alternate;
+    animation:
+        monsterHappy .55s ease-in-out infinite alternate;
 }
 
 
-/* Triste */
+/* ---------- Triste ---------- */
 
 .mascot-sad .mouth {
     width: 22px;
     height: 10px;
+
     bottom: 7px;
 
     background: transparent;
@@ -323,7 +352,10 @@ footer {
 
 .mascot-sad .monster {
     animation: none;
-    transform: translateX(-50%) translateY(5px);
+
+    transform:
+        translateX(-50%)
+        translateY(5px);
 }
 
 .mascot-sad .eye {
@@ -331,25 +363,37 @@ footer {
 }
 
 
-/* Animações */
+/* ---------- Animações ---------- */
 
 @keyframes monsterFloat {
+
     0%, 100% {
-        transform: translateX(-50%) translateY(0);
+        transform:
+            translateX(-50%)
+            translateY(0);
     }
 
     50% {
-        transform: translateX(-50%) translateY(-4px);
+        transform:
+            translateX(-50%)
+            translateY(-4px);
     }
 }
 
 @keyframes monsterHappy {
+
     from {
-        transform: translateX(-50%) translateY(0) rotate(-2deg);
+        transform:
+            translateX(-50%)
+            translateY(0)
+            rotate(-2deg);
     }
 
     to {
-        transform: translateX(-50%) translateY(-7px) rotate(2deg);
+        transform:
+            translateX(-50%)
+            translateY(-7px)
+            rotate(2deg);
     }
 }
 
@@ -382,24 +426,26 @@ footer {
 }
 
 </style>
-""", unsafe_allow_html=True)
+""",
+    unsafe_allow_html=True,
+)
 
 
 # =========================================================
 # MASCOTE
 # =========================================================
 
-def estado_mascote(resultado):
+def estado_mascote(deteccoes):
     """
     Regra provisória.
 
-    Depois substituímos apenas esta função pela análise
-    dos dados nutricionais/macros.
+    Depois esta função pode utilizar diretamente
+    os dados nutricionais/macros.
     """
 
     classes = {
         str(item.get("class", "")).strip().lower()
-        for item in (resultado or [])
+        for item in (deteccoes or [])
         if isinstance(item, dict)
     }
 
@@ -413,11 +459,19 @@ def estado_mascote(resultado):
         "carrot",
         "cenoura",
         "cabbage",
+        "broccoli",
+        "spinach",
+        "cucumber",
+        "bell pepper",
         "vegetable",
         "vegetables",
     }
 
-    return "happy" if classes & vegetais else "sad"
+    return (
+        "happy"
+        if classes & vegetais
+        else "sad"
+    )
 
 
 def html_mascote(estado):
@@ -440,31 +494,87 @@ def html_mascote(estado):
 # RESULTADOS
 # =========================================================
 
-def mostrar_resultado(resultado):
+def mostrar_resultado(deteccoes, nutricao):
 
-    if not resultado:
-        st.warning("Nenhum alimento foi identificado.")
+    if not deteccoes:
+        st.warning(
+            "Nenhum alimento foi identificado."
+        )
         return
 
-    st.subheader("Alimentos identificados")
+    st.subheader(
+        "Alimentos identificados"
+    )
 
-    for item in resultado:
+    for item in deteccoes:
 
-        if not isinstance(item, dict):
-            continue
+        nome = item.get(
+            "class",
+            "Desconhecido",
+        )
 
-        nome = item.get("class", "Desconhecido")
         confianca = float(
-            item.get("confidence", 0)
+            item.get(
+                "confidence",
+                0,
+            )
         ) * 100
+
+        porcentagem = float(
+            item.get(
+                "porcentagem",
+                0,
+            )
+        )
 
         st.markdown(
             f'<div class="food-result">'
-            f'<span class="food-name">{nome}</span>'
-            f'<span class="food-confidence">{confianca:.1f}%</span>'
+            f'<span class="food-name">'
+            f'{nome.title()}'
+            f'</span>'
+            f'<span class="food-confidence">'
+            f'{confianca:.1f}% confiança • '
+            f'{porcentagem:.1f}% do prato'
+            f'</span>'
             f'</div>',
             unsafe_allow_html=True,
         )
+
+    # -----------------------------------------------------
+    # NUTRIÇÃO
+    # -----------------------------------------------------
+
+    st.subheader(
+        "Estimativa nutricional"
+    )
+
+    col1, col2 = st.columns(2)
+
+    col1.metric(
+        "Calorias estimadas",
+        f'{nutricao["calorias_totais"]:.0f} kcal',
+    )
+
+    col2.metric(
+        "Alimentos calculados",
+        len(
+            nutricao["itens"]
+        ),
+    )
+
+    for item in nutricao["itens"]:
+
+        st.write(
+            f'**{item["class"].title()}** · '
+            f'{item["categoria"].title()} · '
+            f'{item["peso_estimado_g"]:.0f} g · '
+            f'{item["kcal_estimado"]:.0f} kcal'
+        )
+
+    st.caption(
+        "Estimativa baseada na proporção visual dos alimentos "
+        "e em um prato de referência de 500 g."
+    )
 
 
 # =========================================================
@@ -473,7 +583,9 @@ def mostrar_resultado(resultado):
 
 st.markdown(
     '<div class="hero">'
-    '<div class="hero-title">🍽️ NutriVision RU</div>'
+    '<div class="hero-title">'
+    '🍽️ NutriVision RU'
+    '</div>'
     '<div class="hero-subtitle">'
     'Descubra o que há no seu prato e entenda melhor sua refeição no RU.'
     '</div>'
@@ -486,17 +598,26 @@ st.markdown(
 # CARD PRINCIPAL
 # =========================================================
 
-with st.container(border=True):
+with st.container(
+    border=True
+):
 
-    # Lugar fixo do mascote
+    # -----------------------------------------------------
+    # Mascote
+    # -----------------------------------------------------
+
     mascot_slot = st.empty()
 
     mascot_slot.markdown(
-        html_mascote(st.session_state.mascote),
+        html_mascote(
+            st.session_state.mascote
+        ),
         unsafe_allow_html=True,
     )
 
-    st.subheader("Analise sua refeição")
+    st.subheader(
+        "Analise sua refeição"
+    )
 
     st.write(
         "Envie uma imagem ou vídeo do seu prato. "
@@ -505,7 +626,10 @@ with st.container(border=True):
 
     tipo = st.radio(
         "Tipo de entrada:",
-        ["Imagem", "Vídeo"],
+        [
+            "Imagem",
+            "Vídeo",
+        ],
         horizontal=True,
     )
 
@@ -518,21 +642,39 @@ with st.container(border=True):
 
         arquivo = st.file_uploader(
             "Envie uma foto do seu prato",
-            type=["jpg", "jpeg", "png"],
+            type=[
+                "jpg",
+                "jpeg",
+                "png",
+            ],
             key="imagem",
         )
 
-        # Sem imagem -> estado neutro
+        # -------------------------------------------------
+        # Nenhuma imagem enviada
+        # -------------------------------------------------
+
         if not arquivo:
 
-            if st.session_state.mascote != "default":
+            if (
+                st.session_state.mascote
+                != "default"
+            ):
 
-                st.session_state.mascote = "default"
+                st.session_state.mascote = (
+                    "default"
+                )
 
                 mascot_slot.markdown(
-                    html_mascote("default"),
+                    html_mascote(
+                        "default"
+                    ),
                     unsafe_allow_html=True,
                 )
+
+        # -------------------------------------------------
+        # Imagem enviada
+        # -------------------------------------------------
 
         else:
 
@@ -542,11 +684,19 @@ with st.container(border=True):
                     arquivo
                 ).convert("RGB")
 
-                st.image(
+                # Espaço usado primeiro pela foto original
+                # e depois pela foto anotada pelo YOLO.
+                preview_slot = st.empty()
+
+                preview_slot.image(
                     imagem,
                     caption="Pré-visualização",
                     use_container_width=True,
                 )
+
+                # -----------------------------------------
+                # Analisar
+                # -----------------------------------------
 
                 if st.button(
                     "Analisar refeição",
@@ -562,34 +712,98 @@ with st.container(border=True):
 
                     else:
 
+                        # ---------------------------------
+                        # YOLO
+                        # ---------------------------------
+
                         with st.spinner(
                             "Identificando alimentos..."
                         ):
 
-                            resultado = detectar_imagem(
+                            analise = detectar_imagem(
                                 imagem
                             )
 
-                        # Atualiza reação
-                        estado = estado_mascote(
-                            resultado
+                        # ---------------------------------
+                        # Validação do retorno
+                        # ---------------------------------
+
+                        if not isinstance(
+                            analise,
+                            dict,
+                        ):
+
+                            raise ValueError(
+                                "detectar_imagem() deve retornar "
+                                "um dicionário com 'deteccoes' "
+                                "e 'imagem_anotada'."
+                            )
+
+                        deteccoes = analise.get(
+                            "deteccoes",
+                            [],
                         )
 
-                        st.session_state.mascote = estado
+                        imagem_anotada = analise.get(
+                            "imagem_anotada"
+                        )
+
+                        # ---------------------------------
+                        # Nutrição
+                        # ---------------------------------
+
+                        nutricao = calcular_calorias(
+                            deteccoes
+                        )
+
+                        # ---------------------------------
+                        # Imagem com boxes / máscaras
+                        # ---------------------------------
+
+                        if imagem_anotada is not None:
+
+                            preview_slot.image(
+                                imagem_anotada,
+                                caption=(
+                                    "Alimentos identificados "
+                                    "pelo NutriVision"
+                                ),
+                                use_container_width=True,
+                            )
+
+                        # ---------------------------------
+                        # Mascote
+                        # ---------------------------------
+
+                        estado = estado_mascote(
+                            deteccoes
+                        )
+
+                        st.session_state.mascote = (
+                            estado
+                        )
 
                         mascot_slot.markdown(
-                            html_mascote(estado),
+                            html_mascote(
+                                estado
+                            ),
                             unsafe_allow_html=True,
                         )
 
+                        # ---------------------------------
+                        # Resultado
+                        # ---------------------------------
+
                         mostrar_resultado(
-                            resultado
+                            deteccoes,
+                            nutricao,
                         )
 
             except Exception as erro:
 
                 st.error(
-                    f"Erro ao abrir ou processar a imagem: {erro}"
+                    "Erro ao abrir ou processar "
+                    f"a imagem: {erro}"
                 )
 
 
@@ -599,19 +813,30 @@ with st.container(border=True):
 
     else:
 
-        # Vídeo ainda não é analisado -> mascote neutro
-        if st.session_state.mascote != "default":
+        # Vídeo ainda não altera o mascote.
+        if (
+            st.session_state.mascote
+            != "default"
+        ):
 
-            st.session_state.mascote = "default"
+            st.session_state.mascote = (
+                "default"
+            )
 
             mascot_slot.markdown(
-                html_mascote("default"),
+                html_mascote(
+                    "default"
+                ),
                 unsafe_allow_html=True,
             )
 
         arquivo = st.file_uploader(
             "Envie um vídeo da sua refeição",
-            type=["mp4", "avi", "mov"],
+            type=[
+                "mp4",
+                "avi",
+                "mov",
+            ],
             key="video",
         )
 
@@ -639,14 +864,19 @@ with st.container(border=True):
 
 st.write("")
 
-with st.expander("Como funciona?"):
+with st.expander(
+    "Como funciona?"
+):
 
-    st.markdown("""
+    st.markdown(
+        """
 1. Envie uma foto ou vídeo da refeição.
-2. O YOLO identifica os alimentos.
-3. O sistema apresenta cada alimento e a confiança da detecção.
-4. Os alimentos serão associados aos dados nutricionais para calcular os macros.
-""")
+2. O YOLO identifica os alimentos presentes.
+3. A imagem processada mostra as regiões identificadas.
+4. O sistema apresenta a confiança e a proporção estimada de cada alimento.
+5. Os alimentos são associados aos dados nutricionais para estimar calorias.
+"""
+    )
 
 
 st.caption(
